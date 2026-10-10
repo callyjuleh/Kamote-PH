@@ -1,0 +1,16 @@
+{
+  "document": "RO102_CDE_Road_and_Traffic_Rules_Signs-Signals-Markings.pdf",
+  "source_note": "Manually curated from instructor assessment of scanned slides. Pages 31-32 had no usable text layer (OCR required). No numerical speed is stated on the slides.",
+  "pages": [
+    {
+      "page": 31,
+      "section_ref": "EXPRESSWAY MERGING",
+      "content": "ROAD AND TRAFFIC RULES - Expressway entry and the continuity line. When entering an expressway, a driver approaches through an entrance ramp and an acceleration lane. The dashed marking beside the merging area is called the CONTINUITY LINE. It separates the entering traffic from the through traffic already traveling on the expressway. The correct speed when merging is not a fixed number: the driver must accelerate along the entrance or acceleration lane, adjust to a speed appropriate to the traffic already on the expressway, obey the posted speed limit and road conditions, yield the right-of-way to vehicles already on the expressway, and merge only when there is a safe gap in traffic."
+    },
+    {
+      "page": 32,
+      "section_ref": "CONTINUITY LINE",
+      "content": "ROAD AND TRAFFIC RULES - Road markings and the merging area. The continuity line is the road marking that separates the merging area from the main expressway lanes and guides drivers when lanes join or diverge. It marks where a vehicle merging from an entrance ramp shares the roadway with through traffic. Drivers must use the acceleration lane to match speed and merge safely, and must never force other vehicles to slow down. Important: these slides do not provide a specific numerical merging speed in km/h. The requirement is to merge at a speed compatible with the surrounding traffic flow and within the posted limits. Yielding to vehicles already on the expressway is the right-of-way rule."
+    }
+  ]
+}

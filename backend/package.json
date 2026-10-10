@@ -1,0 +1,31 @@
+{
+  "name": "roadwise-api",
+  "version": "1.0.0",
+  "description": "REST API for the RoadWise PH learning app",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "kb:ingest": "node scripts/ingest-knowledge.js",
+    "kb:curate": "node scripts/curate-knowledge.js",
+    "kb:search": "node scripts/search-knowledge.js",
+    "kb:lessons": "node scripts/seed-knowledge-lessons.js",
+    "auth:reset": "node scripts/fix-logins.js",
+    "quiz:seed-manuals": "node scripts/seed-manual-questions.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.6",
+    "express": "^5.2.1",
+    "mysql2": "^3.11.5",
+    "pdfjs-dist": "^6.4.299"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
