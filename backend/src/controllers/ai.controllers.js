@@ -1,6 +1,7 @@
 'use strict';
 
 const { retrieve } = require('../knowledge/retrieval');
+const { keywordTerms } = require('../knowledge/knowledge.repository');
 const ollama = require('../ai/ollama.service');
 const {
   buildTutorSystemPrompt,
@@ -10,11 +11,23 @@ const {
 } = require('../ai/prompt.builder');
 
 const MAX_QUERY_LENGTH = 1000;
-const TOP_K = 4;
+const TOP_K = 8;
 const MIN_VECTOR_RELEVANCE = 0.58;
 const UNVERIFIED_ANSWER = "I don't have enough reliable information to answer that.";
 const GENERAL_CHAT_PROMPT = `You are Dai, a friendly local assistant. Answer simple everyday questions directly and briefly using your general knowledge. Do not include citations or source names. If a question needs live or current information, say you cannot check it right now. Do not guess about Philippine traffic laws or driving rules; those must be answered from the provided study references.`;
-const ROAD_RULE_QUERY = /\b(?:traffic|road|driv\w*|vehicle|motorcycle|motorist|licen[cs]e|lto|highway|lane|overtak\w*|intersection|pedestrian|sign|signal|speed|fine|penalt\w*|right of way|line|marking|solid|broken|crosswalk|pavement)\b/i;
+const ROAD_RULE_QUERY = /\b(?:traffic|trapiko|road|kalsada|driv\w*|drayber|tsuper|vehicle|sasakyan|kotse|car|bus|truck|motorcycle|motorsiklo|motorbike|motorist|license|licence|lisensya|permit|jeepney|puj|highway|lane|overtak\w*|pass(?:ing)?|intersection|crossroad|pedestrian|walk(?:er|way)?|tawiran|zebra|sign|karatula|signal|light|speed|bilis|maximum|limit|fine|multa|penalt\w*|sanction|right[- ]of[- ]way|priority|line|guhit|marking|solid|broken|putol|dash(?:ed)?|dotted|continuous|unbroken|uninterrupted|divider|stripe|crosswalk|pavement|park(?:ing)?|paradahan|helmet|helmeto|headgear|seat[- ]?belt|belt|sinturon|brak(?:e|ing)|preno|accident|aksidente|banggaan|collision|crash|yield|hinto|halt|roundabout|rotunda|tire|tyre|emergency|ambulance|ambulansya|blind ?spot)\b/i;
+const ROAD_RULE_SEARCH_TERMS = new Set([
+  'accident', 'ambulance', 'bicycle', 'blindspot', 'brake', 'bus', 'car', 'collision',
+  'blowout', 'breakdown', 'crosswalk', 'driver', 'drowsy', 'emergency', 'fail', 'failure',
+  'fatigued', 'fine', 'flood', 'fog', 'glare', 'helmet', 'hydroplane', 'intersection', 'jeepney', 'lane', 'law',
+  'license', 'line', 'multa', 'motorcycle', 'overtake', 'park', 'pedestrian', 'penalty',
+  'permit', 'preno', 'puncture', 'railroad', 'rain', 'roundabout', 'road', 'rule', 'school',
+  'seat belt', 'seatbelt', 'signal', 'skid', 'sleepy', 'stalled', 'tired', 'tire',
+  'speed', 'stop', 'traffic', 'truck', 'vehicle', 'yield', 'aksidente', 'ambulansya',
+  'banggaan', 'bilis', 'drayber', 'guhit', 'helmeto', 'hinto', 'karatula', 'kalsada',
+  'kotse', 'lisensya', 'motorsiklo', 'paradahan', 'panganib', 'putol', 'sasakyan',
+  'tawiran', 'trapiko', 'tsuper', 'ulan', 'yielding',
+]);
 const NON_FACT_TERMS = new Set([
   'a', 'about', 'all', 'an', 'and', 'any', 'are', 'as', 'at', 'be', 'been', 'being',
   'by', 'can', 'could', 'did', 'do', 'does', 'each', 'fdm', 'for', 'from', 'had',
@@ -81,9 +94,15 @@ function answerFromRoadSignalMaterial(message, passages) {
 
 function answerFromRoadMarkingMaterial(message, passages) {
   const query = message.toLowerCase();
-  if (!/\b(?:solid|continuous)\b.*\b(?:line|lines|marking|markings)\b|\b(?:line|lines|marking|markings)\b.*\b(?:solid|continuous)\b/i.test(query)) {
-    return null;
-  }
+  const terms = new Set(keywordTerms(query));
+  const hasSolidTerm = ['solid', 'continuous', 'unbroken', 'uninterrupted']
+    .some((term) => terms.has(term));
+  const hasBrokenTerm = ['broken', 'dash', 'dashed', 'dotted']
+    .some((term) => terms.has(term));
+  const hasLineTerm = ['line', 'marking', 'paint', 'separator', 'stripe']
+    .some((term) => terms.has(term));
+  if (!hasLineTerm || (!hasSolidTerm && !hasBrokenTerm)) return null;
+  if (hasBrokenTerm && /\bwhite\b/i.test(query) && !/\byellow\b/i.test(query)) return null;
 
   const content = passages.map((passage) => String(passage.content || '')).join('\n');
   const singleLineSupported =
@@ -97,10 +116,17 @@ function answerFromRoadMarkingMaterial(message, passages) {
   const brokenAndSolidSupported =
     /BROKEN AND SOLID YELLOW LINES/i.test(content) &&
     /(?:passing is permitted|crossing and overtaking is allowed) on the side of the broken line/i.test(content) &&
-    /(?:not on side of solid line|not allowed on the side of the solid line)/i.test(content);
+    /(?:not on (?:the )?side of solid line|not allowed on (?:the )?side of solid line|not allowed on (?:the )?side of the solid line)/i.test(content);
+  const brokenLineSupported = passages.some((passage) =>
+    /\bBROKEN YELLOW LINE\b[\s\S]{0,140}crossing and overtaking is allowed with necessary precaution/i
+      .test(String(passage.content || ''))
+  );
 
-  if (/\b(?:broken|dashed)\b/i.test(query) && brokenAndSolidSupported) {
-    return 'You may pass only on the side with the broken line, not on the side with the solid line.';
+  if (hasBrokenTerm && hasSolidTerm && brokenAndSolidSupported) {
+    return 'A broken (dashed) yellow line allows crossing and overtaking with necessary precaution. When paired with a solid line, crossing and overtaking are allowed only on the broken-line side.';
+  }
+  if (hasBrokenTerm && brokenLineSupported) {
+    return 'A broken (dashed) yellow line allows crossing and overtaking with necessary precaution.';
   }
 
   if (
@@ -133,6 +159,11 @@ function answerFromRoadMarkingMaterial(message, passages) {
     return 'Double solid lines prohibit overtaking and crossing.';
   }
   return null;
+}
+
+function isRoadRuleQuery(message) {
+  return ROAD_RULE_QUERY.test(String(message || '')) ||
+    keywordTerms(message).some((term) => ROAD_RULE_SEARCH_TERMS.has(term));
 }
 
 function answerFromVehicleSafetyGuide(message, passages) {
@@ -335,7 +366,7 @@ async function chat(req, res, next) {
         : { ...response, reply: smallTalkAnswer });
     }
 
-    if (!ROAD_RULE_QUERY.test(message)) {
+    if (!isRoadRuleQuery(message)) {
       try {
         const result = await ollama.chat({
           messages: [
@@ -450,4 +481,6 @@ module.exports = {
   hasValidSourceCitations,
   findSupportingPassage,
   groundModelAnswer,
+  answerFromRoadMarkingMaterial,
+  isRoadRuleQuery,
 };
